@@ -25,16 +25,16 @@ interface ArbCases {
 // KOVAN ADDRESS: 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5 // V2: 0x652B2937Efd0B5beA1c8d54293FC1289672AFC6b
 // ROPSTEN ADDRESS: 0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728
 
-contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728)) {
+contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728)){
 
-  address lendingPoolAddress = addressesProvider.getLendingPool();
-  ILendingPool lendingPool = ILendingPool(lendingPoolAddress);
+  using SafeMath for uint;
+
   // ROPSTEN ADDRESS: 0x15d486B63722aA12CFE6892EF1cCB9E4Dce13e12
   ArbCases arbCases = ArbCases(address(0x15d486B63722aA12CFE6892EF1cCB9E4Dce13e12));
   address erc20AddressOfAsset;
-  string firstSwapDEX;
+  uint8 firstSwapDEX;
   address firstSwapCoin;
-  string secondSwapDEX;
+  uint8 secondSwapDEX;
   address secondSwapCoin;
   address owner;
 
@@ -42,7 +42,7 @@ contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7
 
   function() external payable {}
 
-  function startArbUsingEthReserve(address _asset, uint _amount, string memory _firstSwapDEX, address _firstSwapCoin, string memory _secondSwapDEX, address _secondSwapCoin) public onlyOwner {
+  function startArbUsingEthReserve(address _asset, uint _amount, uint8 _firstSwapDEX, address _firstSwapCoin, uint8 _secondSwapDEX, address _secondSwapCoin) external onlyOwner {
 
     firstSwapDEX = _firstSwapDEX;
     firstSwapCoin = _firstSwapCoin;
@@ -51,11 +51,12 @@ contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7
     bytes memory data = "";
 
     // THEN WE INITIATE THE LOAN, WHICH ON CALLBALL WILL TRIGGER executeoperation()
+    ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
     lendingPool.flashLoan(address(this), _asset, _amount, data);
 
   }
 
-  function startArbUsingTokenReserve(address _asset, address _erc20AddressOfAsset, uint _amount, string memory _firstSwapDEX, string memory _secondSwapDEX, address _secondSwapCoin) public onlyOwner {
+  function startArbUsingTokenReserve(address _asset, address _erc20AddressOfAsset, uint _amount, uint8 _firstSwapDEX, uint8 _secondSwapDEX, address _secondSwapCoin) external onlyOwner {
 
     erc20AddressOfAsset = _erc20AddressOfAsset;
     firstSwapDEX = _firstSwapDEX;
@@ -64,11 +65,14 @@ contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7
     bytes memory data = "";
 
     // THEN WE INITIATE THE LOAN, WHICH ON CALLBALL WILL TRIGGER executeoperation()
+    ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
     lendingPool.flashLoan(address(this), _asset, _amount, data);
 
   }
 
   function executeOperation(address _reserve, uint256 _amount, uint256 _fee, bytes calldata) external {
+
+    require(_amount <= getBalanceInternal(address(this), _reserve), "Invalid balance, was the flashLoan successful?");
 
     address tempHeldToken;
     uint256 tempHeldTokenAmount;
