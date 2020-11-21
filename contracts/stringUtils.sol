@@ -1,4 +1,4 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.5.16;
 
 library StringUtils {
     /// @dev Does a byte-by-byte lexicographical comparison of two strings.

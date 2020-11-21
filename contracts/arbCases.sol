@@ -1,7 +1,8 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.5.16;
 
 import "./ERC20.sol";
 import "./IUniswap.sol";
+import "./stringUtils.sol";
 
 interface IKyberNetworkProxy {
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view returns (uint expectedRate, uint slippageRate);
@@ -20,14 +21,21 @@ interface IWETH {
     function approve(address guy, uint wad) external returns (bool);
     function transfer(address dst, uint wad) external returns (bool);
     function transferFrom(address src, address dst, uint wad) external returns (bool);
-    function () external payable;
 }
 
-contract arbCases {
+contract ArbCases {
 
+  address constant UNISWAP_FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; // MAINNET, KOVAN & ROPSTEN ADDRESS ARE THE SAME
+  IUniswapFactory public uniswapFactory = IUniswapFactory(UNISWAP_FACTORY);
+  // MAINNET ADDRESS: 0x9AAb3f75489902f3a48495025729a0AF77d4b11e
+  // KOVAN ADDRES: 0xc153eeAD19e0DBbDb3462Dcc2B703cC6D738A37c
+  // ROPSTEN ADDRESS: 0x818E6FECD516Ecc3849DAf6845e3EC868087B755
+  address constant KYBER_PROXY = 0xc153eeAD19e0DBbDb3462Dcc2B703cC6D738A37c;
+  IKyberNetworkProxy public kyberProxy = IKyberNetworkProxy(KYBER_PROXY);
+  ISimpleKyberProxy public simpleKyberProxy = ISimpleKyberProxy(KYBER_PROXY);
 
   // THESE 3 FUNCTIONS HANDLE THE FIRST ARB SWAP
-  function swapEthToTokenFirstStep(string memory _dex, address _destinationCoin, uint256 _amount) internal returns (address, uint256) {
+  function swapEthToTokenFirstStep(string calldata _dex, address _destinationCoin, uint256 _amount, uint256 _deadline) external returns (address, uint256) {
 
     uint256 boughtCoinAmount;
 
@@ -37,7 +45,7 @@ contract arbCases {
         IUniswapExchange specificUniswapExchange = IUniswapExchange(uniswap_token_Address);
 
         // SWAPPING AT EXCHANGE
-        boughtCoinAmount = specificUniswapExchange.ethToTokenSwapInput.value(address(this).balance)(1, deadline);
+        boughtCoinAmount = specificUniswapExchange.ethToTokenSwapInput.value(address(this).balance)(1, _deadline);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
@@ -53,7 +61,7 @@ contract arbCases {
         return (_destinationCoin, boughtCoinAmount);
   }
 
-  function swapTokenToTokenFirstStep(string memory _dex, address _destinationCoin, address _erc20AddressOfAsset, uint256 _amount) internal returns (address, uint256) {
+  function swapTokenToTokenFirstStep(string calldata _dex, address _destinationCoin, address _erc20AddressOfAsset, uint256 _amount, uint256 _deadline) external returns (address, uint256) {
 
     uint256 boughtCoinAmount;
     ERC20 startingCoin = ERC20(_erc20AddressOfAsset);
@@ -65,7 +73,7 @@ contract arbCases {
 
         // SWAPPING AT EXCHANGE
         require(startingCoin.approve(address(specificUniswapExchange), _amount), "Could not approve token-to-token purchase (UNISWAP).");
-        boughtCoinAmount = specificUniswapExchange.tokenToTokenSwapInput(_amount, 1, 1, deadline, _destinationCoin);
+        boughtCoinAmount = specificUniswapExchange.tokenToTokenSwapInput(_amount, 1, 1, _deadline, _destinationCoin);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
@@ -81,7 +89,7 @@ contract arbCases {
         return (_destinationCoin, boughtCoinAmount);
   }
 
-  function swapTokenToEthFirstStep(string memory _dex, address _startingCoin, uint256 _amount) internal returns (uint256) {
+  function swapTokenToEthFirstStep(string calldata _dex, address _startingCoin, uint256 _amount, uint256 _deadline) external returns (uint256) {
 
     uint256 boughtCoinAmount;
     ERC20 startingCoin = ERC20(_startingCoin);
@@ -93,7 +101,7 @@ contract arbCases {
 
         // SWAPPING AT EXCHANGE
         require(startingCoin.approve(address(specificUniswapExchange), _amount), "Could not approve token-to-Eth Purchase (UNISWAP).");
-        boughtCoinAmount = specificUniswapExchange.tokenToEthSwapInput(_amount, 1, deadline);
+        boughtCoinAmount = specificUniswapExchange.tokenToEthSwapInput(_amount, 1, _deadline);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
@@ -110,7 +118,7 @@ contract arbCases {
   }
 
     // THESE 3 FUNCTIONS HANDLE THE SECOND ARB SWAP
-    function swapEthToToken(string memory _dex, address _destinationCoin, uint256 _tempHeldTokenAmount) internal returns (uint256) {
+    function swapEthToToken(string calldata _dex, address _destinationCoin, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256) {
 
     uint256 boughtCoinAmount;
 
@@ -120,7 +128,7 @@ contract arbCases {
         IUniswapExchange specificUniswapExchange = IUniswapExchange(uniswap_token_Address);
 
         // SWAPPING AT EXCHANGE
-        boughtCoinAmount = specificUniswapExchange.ethToTokenSwapInput.value(address(this).balance)(1, deadline);
+        boughtCoinAmount = specificUniswapExchange.ethToTokenSwapInput.value(address(this).balance)(1, _deadline);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
@@ -129,15 +137,14 @@ contract arbCases {
         (uint256 expectedRate, ) = kyberProxy.getExpectedRate(eth, coin, _tempHeldTokenAmount);
 
         // SWAPPING AT EXCHANGE
-        boughtCoinAmount = kyberProxy.swapEtherToToken.value(address(this).balance)(coin, expectedRate);
+        boughtCoinAmount = simpleKyberProxy.swapEtherToToken.value(address(this).balance)(coin, expectedRate);
 
     } else { revert("No valid DEX selected."); }
 
-        tokenBalances[_destinationCoin] = boughtCoinAmount;
         return boughtCoinAmount;
   }
 
-  function swapTokenToToken(string memory _dex, address _destinationCoin, address _tempHeldToken, uint256 _tempHeldTokenAmount) internal returns (uint256) {
+  function swapTokenToToken(string calldata _dex, address _destinationCoin, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256) {
 
     uint256 boughtCoinAmount;
     ERC20 startingCoin = ERC20(_tempHeldToken);
@@ -149,7 +156,7 @@ contract arbCases {
 
         // SWAPPING AT EXCHANGE
         require(startingCoin.approve(address(specificUniswapExchange), _tempHeldTokenAmount), "Could not approve token-to-token purchase (UNISWAP).");
-        boughtCoinAmount = specificUniswapExchange.tokenToTokenSwapInput(_tempHeldTokenAmount, 1, 1, deadline, _destinationCoin);
+        boughtCoinAmount = specificUniswapExchange.tokenToTokenSwapInput(_tempHeldTokenAmount, 1, 1, _deadline, _destinationCoin);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
@@ -162,11 +169,10 @@ contract arbCases {
 
     } else { revert("No valid DEX selected."); }
 
-        tokenBalances[_destinationCoin] = boughtCoinAmount;
         return boughtCoinAmount;
   }
 
-  function swapTokenToEth(string memory _dex, address _tempHeldToken, uint256 _tempHeldTokenAmount) internal returns (uint256) {
+  function swapTokenToEth(string calldata _dex, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256) {
 
     uint256 boughtCoinAmount;
     ERC20 startingCoin = ERC20(_tempHeldToken);
@@ -178,7 +184,7 @@ contract arbCases {
 
         // SWAPPING AT EXCHANGE
         require(startingCoin.approve(address(specificUniswapExchange), _tempHeldTokenAmount), "Could not approve token-to-Eth Purchase (UNISWAP).");
-        boughtCoinAmount = specificUniswapExchange.tokenToEthSwapInput(_tempHeldTokenAmount, 1, deadline);
+        boughtCoinAmount = specificUniswapExchange.tokenToEthSwapInput(_tempHeldTokenAmount, 1, _deadline);
 
     } else if (StringUtils.equal(_dex,"KYBER")){
 
