@@ -29,18 +29,18 @@ contract ArbCases {
   // MAINNET ADDRESS: 0x9AAb3f75489902f3a48495025729a0AF77d4b11e
   // KOVAN ADDRES: 0xc153eeAD19e0DBbDb3462Dcc2B703cC6D738A37c
   // ROPSTEN ADDRESS: 0x818E6FECD516Ecc3849DAf6845e3EC868087B755
-  address constant KYBER_PROXY = 0x818E6FECD516Ecc3849DAf6845e3EC868087B755;
+  address constant KYBER_PROXY = 0x9AAb3f75489902f3a48495025729a0AF77d4b11e;
   IKyberNetworkProxy public kyberProxy = IKyberNetworkProxy(KYBER_PROXY);
   ISimpleKyberProxy public simpleKyberProxy = ISimpleKyberProxy(KYBER_PROXY);
-  address owner;
-
-  constructor() public {
-    owner = msg.sender;
-      }
+  address private owner;
 
   modifier onlyOwner(){
     require(msg.sender == owner);
     _;
+  }
+
+  constructor() public {
+    owner = msg.sender;
   }
 
   // THESE 3 FUNCTIONS HANDLE THE FIRST ARB SWAP

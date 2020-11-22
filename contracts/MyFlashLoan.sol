@@ -5,12 +5,12 @@ import "./ILendingPool.sol";
 import "./ILendingPoolAddressesProvider.sol";
 
 interface ArbCases {
-  function swapEthToTokenFirstStep(string calldata _dex, address _destinationCoin, uint256 _amount, uint256 _deadline) external returns (address, uint256);
-  function swapTokenToTokenFirstStep(string calldata _dex, address _destinationCoin, address _erc20AddressOfAsset, uint256 _amount, uint256 _deadline) external returns (address, uint256);
-  function swapTokenToEthFirstStep(string calldata _dex, address _startingCoin, uint256 _amount, uint256 _deadline) external returns (uint256);
-  function swapEthToToken(string calldata _dex, address _destinationCoin, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
-  function swapTokenToToken(string calldata _dex, address _destinationCoin, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
-  function swapTokenToEth(string calldata _dex, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
+  function swapEthToTokenFirstStep(uint8 _dex, address _destinationCoin, uint256 _amount, uint256 _deadline) external returns (address, uint256);
+  function swapTokenToTokenFirstStep(uint8 _dex, address _destinationCoin, address _erc20AddressOfAsset, uint256 _amount, uint256 _deadline) external returns (address, uint256);
+  function swapTokenToEthFirstStep(uint8 _dex, address _startingCoin, uint256 _amount, uint256 _deadline) external returns (uint256);
+  function swapEthToToken(uint8 _dex, address _destinationCoin, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
+  function swapTokenToToken(uint8 _dex, address _destinationCoin, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
+  function swapTokenToEth(uint8 _dex, address _tempHeldToken, uint256 _tempHeldTokenAmount, uint256 _deadline) external returns (uint256);
 }
 
 // 1 DAI = 1000000000000000000 (18 zeros)
@@ -25,12 +25,12 @@ interface ArbCases {
 // KOVAN ADDRESS: 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5 // V2: 0x652B2937Efd0B5beA1c8d54293FC1289672AFC6b
 // ROPSTEN ADDRESS: 0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728
 
-contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728)){
+contract MyFlashLoan is FlashLoanReceiverBase(address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8)){
 
   using SafeMath for uint;
 
   // ROPSTEN ADDRESS: 0x15d486B63722aA12CFE6892EF1cCB9E4Dce13e12
-  ArbCases arbCases = ArbCases(address(0x15d486B63722aA12CFE6892EF1cCB9E4Dce13e12));
+  ArbCases arbCases = ArbCases(address(0xA919F74202B0171e615AeB1fE7Ae3B8d0AfCCDEF));
   address erc20AddressOfAsset;
   uint8 firstSwapDEX;
   address firstSwapCoin;
@@ -94,9 +94,9 @@ contract MyFlashLoan is FlashLoanReceiverBase(address(0x1c8756FD2B28e9426CDBDcC7
     }
 
     erc20AddressOfAsset = address(0);
-    firstSwapDEX = '';
+    firstSwapDEX = 0;
     firstSwapCoin = address(0);
-    secondSwapDEX = '';
+    secondSwapDEX = 0;
     secondSwapCoin = address(0);
 
     uint256 totalDebt = _amount.add(_fee);
